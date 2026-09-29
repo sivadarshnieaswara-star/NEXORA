@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Admin - Expense Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Admin specific tweaks */
+    .admin-tabs {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+    .admin-tab {
+      padding: var(--space-2) var(--space-4);
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .admin-tab:hover {
+      background: var(--bg-hover);
+      color: var(--text-color);
+    }
+    .admin-tab.active {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+    .admin-section {
+      display: none;
+    }
+    .admin-section.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar ─────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">⚙️</div>
+      <div>
+        <div class="sidebar-logo-text">Admin<br>Panel</div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav" role="navigation">
+      <div class="sidebar-section-label">Database</div>
+
+      <button class="nav-item active" onclick="switchAdminTab('expenses')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+        Expenses
+      </button>
+
+      <button class="nav-item" onclick="switchAdminTab('incomes')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Incomes
+      </button>
+
+      <button class="nav-item" onclick="switchAdminTab('budgets')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Budgets
+      </button>
+
+      <div class="sidebar-section-label">Actions</div>
+      <a href="index.html" class="nav-item" style="text-decoration: none; color: inherit;">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        Back to App
+      </a>
+    </nav>
+  </aside>
+
+  <!-- ── Main Content ───────────────────── -->
+  <div class="main-content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-label">DATABASE</div>
+      <h1 class="page-title">Admin Dashboard</h1>
+      <p class="page-subtitle">View raw records from the SQLite backend.</p>
+    </div>
+
+    <!-- Page Body -->
+    <div class="page-body">
+
+      <!-- ════ EXPENSES section ════ -->
+      <div class="page-section admin-section active" id="sec-expenses">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Raw Data</div>
+              <div class="section-title">Expenses Table</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Amount (₹)</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="expenses-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ INCOMES section ════ -->
+      <div class="page-section admin-section" id="sec-incomes">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Raw Data</div>
+              <div class="section-title">Incomes Table</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Amount (₹)</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="incomes-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ BUDGETS section ════ -->
+      <div class="page-section admin-section" id="sec-budgets">
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Raw Data</div>
+              <div class="section-title">Budgets Table</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Budget Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody id="budgets-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+</div><!-- /app-shell -->
+
+<script src="admin.js"></script>
+<script>
+  function switchAdminTab(target) {
+    // Update nav items
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      if(btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(target)) {
+        btn.classList.add('active');
+      } else if(btn.getAttribute('onclick')) {
+        btn.classList.remove('active');
+      }
+    });
+
+    // Update sections
+    document.querySelectorAll('.admin-section').forEach(sec => {
+      sec.classList.remove('active');
+    });
+    document.getElementById('sec-' + target).classList.add('active');
+  }
+</script>
+</body>
+</html>

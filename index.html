@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexora</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="insights.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- 3D Cover Screen -->
+<div id="cover-screen" class="cover-screen">
+  <!-- Animated graph canvas -->
+  <canvas id="cover-canvas"></canvas>
+
+  <!-- 3D NEXORA title -->
+  <div class="cover-center">
+    <div class="cover-nexora-wrap">
+      <div class="cover-nexora-text">NEXORA</div>
+      <div class="cover-nexora-shadow">NEXORA</div>
+    </div>
+    <p class="cover-subtitle">Your personal finance, visualized.</p>
+  </div>
+
+  <!-- Swipe indicator -->
+  <div class="swipe-indicator">
+    <div class="chevron"></div>
+    <div class="chevron"></div>
+    <div class="chevron"></div>
+    <p>Click or swipe up to enter</p>
+  </div>
+</div>
+
+<!-- Toast container (rendered above everything) -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Mobile menu button -->
+<button class="mobile-menu-btn" id="mobile-menu-btn" style="display:none;" aria-label="Open menu">☰</button>
+
+<div class="app-shell">
+
+  <!-- ── Sidebar ─────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">💰</div>
+      <div>
+        <div class="sidebar-logo-text">Nexora</div>
+      </div>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav" role="navigation">
+      <div class="sidebar-section-label">Overview</div>
+
+      <button class="nav-item active" data-section="dashboard">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+
+      <div class="sidebar-section-label">Money</div>
+
+      <button class="nav-item" data-section="expenses">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/></svg>
+        Expenses
+      </button>
+
+      <button class="nav-item" data-section="income">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Income
+      </button>
+
+      <button class="nav-item" data-section="budgets">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Budgets
+      </button>
+
+      <div class="sidebar-section-label">Insights</div>
+
+      <button class="nav-item" data-section="insights">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>
+        AI Insights
+      </button>
+
+      <button class="nav-item" data-section="analytics">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </button>
+    </nav>
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <button class="theme-toggle-btn" id="theme-toggle" aria-label="Toggle dark mode">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <span id="theme-toggle-label">Dark Mode</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Main Content ───────────────────── -->
+  <div class="main-content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-label" id="page-label">OVERVIEW</div>
+      <h1 class="page-title" id="page-title">Dashboard</h1>
+      <p class="page-subtitle" id="page-subtitle">Your financial summary at a glance.</p>
+    </div>
+
+    <!-- Page Body -->
+    <div class="page-body">
+
+      <!-- ════ DASHBOARD section ════ -->
+      <div class="page-section active" id="section-dashboard">
+
+        <!-- Stat Row -->
+        <div class="grid-4">
+          <div class="stat-card">
+            <div class="stat-label">Total Income</div>
+            <div class="stat-value text-success" id="total-income">₹0.00</div>
+            <div class="stat-subtext">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value text-danger" id="total-amount">₹0.00</div>
+            <div class="stat-subtext">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Net Savings</div>
+            <div class="stat-value" id="net-savings">₹0.00</div>
+            <div class="stat-subtext">Income − Expenses</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">This Month</div>
+            <div class="stat-value" id="this-month-total">₹0.00</div>
+            <div class="stat-subtext">Expenses</div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Income vs Expenses</div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Spending Trend</div>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="toggle-weekly">Weekly</button>
+                <button class="toggle-btn" id="toggle-monthly">Monthly</button>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="trendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Budget Overview quick view -->
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Budgets</div>
+              <div class="section-title">Budget Overview — Current Month</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" data-section="budgets" id="go-to-budgets">Manage →</button>
+          </div>
+          <div id="budget-progress-container" class="budget-list"></div>
+        </div>
+
+      </div><!-- /section-dashboard -->
+
+
+      <!-- ════ EXPENSES section ════ -->
+      <div class="page-section" id="section-expenses">
+        <div class="grid-2">
+          <!-- Add/Edit Expense Form -->
+          <div class="card">
+            <div class="section-label">New Entry</div>
+            <div class="section-title" id="expense-form-title">Add Expense</div>
+            <div class="divider"></div>
+  <div class="form-group quick-entry-group">
+    <label class="form-label" for="quick-entry">Quick Entry</label>
+    <input type="text" id="quick-entry" placeholder="e.g., '300 lunch' or 'coffee 150'" class="form-control">
+  </div>
+  <div class="form-group quick-entry-group">
+    <label class="form-label" for="receipt-upload">Auto-fill from Receipt</label>
+    <input type="file" id="receipt-upload" accept="image/*" class="form-control">
+    <span class="form-hint" id="receipt-upload-hint">Upload a picture of a receipt to auto-fill the form.</span>
+  </div>
+            <form id="expense-form" novalidate>
+              <input type="hidden" id="expense-id">
+
+              <div class="form-group">
+                <label class="form-label" for="amount">Amount (₹) <span class="required">*</span></label>
+                <input type="number" id="amount" step="0.01" min="0.01" placeholder="0.00" required>
+                <span class="form-error" id="amount-error">Please enter a valid amount.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="category">Category <span class="required">*</span></label>
+                <select id="category" required>
+                  <option value="Food">🍔 Food</option>
+                  <option value="Transport">🚗 Transport</option>
+                  <option value="Housing">🏠 Housing</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Other">📦 Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="date">Date <span class="required">*</span></label>
+                <input type="date" id="date" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="note">Note <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                <input type="text" id="note" placeholder="What was this for?">
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2);">
+                <button type="submit" class="btn btn-primary btn-full" id="submit-btn">Add Expense</button>
+                <button type="button" class="btn btn-ghost btn-full" id="cancel-btn" style="display:none;">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Expense Pie Chart -->
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Spending by Category</div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="expensePieChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expenses Table -->
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Records</div>
+              <div class="section-title">All Expenses</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Note</th>
+                  <th>Amount</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="expense-list">
+              </tbody>
+            </table>
+          </div>
+          <div id="expense-empty" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">💸</div>
+            <div class="empty-state-title">No expenses yet</div>
+            <div class="empty-state-sub">Add your first expense using the form.</div>
+          </div>
+        </div>
+      </div><!-- /section-expenses -->
+
+
+      <!-- ════ INCOME section ════ -->
+      <div class="page-section" id="section-income">
+        <div class="grid-2">
+          <!-- Add/Edit Income Form -->
+          <div class="card">
+            <div class="section-label">New Entry</div>
+            <div class="section-title" id="income-form-title">Add Income</div>
+            <div class="divider"></div>
+            <form id="income-form" novalidate>
+              <input type="hidden" id="income-id">
+
+              <div class="form-group">
+                <label class="form-label" for="income-amount">Amount (₹) <span class="required">*</span></label>
+                <input type="number" id="income-amount" step="0.01" min="0.01" placeholder="0.00" required>
+                <span class="form-error" id="income-amount-error">Please enter a valid amount.</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="income-category">Source <span class="required">*</span></label>
+                <select id="income-category" required>
+                  <option value="Salary">💼 Salary</option>
+                  <option value="Freelance">💻 Freelance</option>
+                  <option value="Investments">📈 Investments</option>
+                  <option value="Other">📦 Other</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="income-date">Date <span class="required">*</span></label>
+                <input type="date" id="income-date" required>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="income-note">Note <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                <input type="text" id="income-note" placeholder="Describe this income">
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2);">
+                <button type="submit" class="btn btn-primary btn-full" id="income-submit-btn">Add Income</button>
+                <button type="button" class="btn btn-ghost btn-full" id="income-cancel-btn" style="display:none;">Cancel</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Income by Source chart card (enhanced) -->
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Income by Source</div>
+              <select id="income-chart-filter" class="chart-filter-select" aria-label="Filter income chart by date range">
+                <option value="this-month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="ytd">Year to Date</option>
+                <option value="all">All Time</option>
+              </select>
+            </div>
+
+            <!-- Donut + Center Stat -->
+            <div class="income-chart-area">
+              <div class="donut-wrapper" id="income-donut-wrapper">
+                <canvas id="incomePieChart"></canvas>
+                <div class="donut-center" id="income-donut-center">
+                  <div class="donut-center-label">Total</div>
+                  <div class="donut-center-value" id="income-donut-total">₹0.00</div>
+                </div>
+              </div>
+
+              <!-- Interactive Legend -->
+              <div class="income-legend" id="income-legend"></div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="income-chart-empty" id="income-chart-empty" style="display:none;">
+              <div class="income-empty-icon">📭</div>
+              <div class="income-empty-title">No income recorded</div>
+              <div class="income-empty-sub">Add income entries using the form to see your source breakdown here.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Income Table -->
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Records</div>
+              <div class="section-title">All Income</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Source</th>
+                  <th>Note</th>
+                  <th>Amount</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="income-list">
+              </tbody>
+            </table>
+          </div>
+          <div id="income-empty" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">💰</div>
+            <div class="empty-state-title">No income recorded yet</div>
+            <div class="empty-state-sub">Track your income using the form.</div>
+          </div>
+        </div>
+      </div><!-- /section-income -->
+
+
+      <!-- ════ BUDGETS section ════ -->
+      <div class="page-section" id="section-budgets">
+        <div class="grid-2">
+          <!-- Set Budgets -->
+          <div class="card">
+            <div class="section-label">Configuration</div>
+            <div class="section-title">Set Monthly Budgets</div>
+            <div class="divider"></div>
+            <form id="budget-form">
+              <div id="budget-inputs"></div>
+              <button type="submit" class="btn btn-primary btn-full" id="save-budget-btn" style="margin-top:var(--space-2);">Save Budgets</button>
+            </form>
+          </div>
+
+          <!-- Budget Progress -->
+          <div class="card">
+            <div class="section-label">This Month</div>
+            <div class="section-title">Spending Progress</div>
+            <div class="divider"></div>
+            <div id="budget-progress-container-2" class="budget-list"></div>
+          </div>
+        </div>
+      </div><!-- /section-budgets -->
+
+
+      <!-- ════ ANALYTICS section ════ -->
+      <div class="page-section" id="section-analytics">
+        <div class="grid-2">
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Spending by Category</div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="analyticsExpensePie"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="chart-header">
+              <div class="chart-title">Spending Trend</div>
+              <div class="toggle-group">
+                <button class="toggle-btn active" id="analytics-toggle-weekly">Weekly</button>
+                <button class="toggle-btn" id="analytics-toggle-monthly">Monthly</button>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="analyticsTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div><!-- /section-analytics -->
+
+
+      <!-- ════ AI INSIGHTS section ════ -->
+      <div class="page-section" id="section-insights">
+
+        <!-- Row 1: Health Score & Investment Readiness -->
+        <div class="grid-2">
+          <!-- 1. Financial Health Score -->
+          <div class="card">
+            <div class="section-label">Assessment</div>
+            <div class="section-title">Financial Health Score</div>
+            <div class="section-subtitle">Evaluated on savings rate, expense ratio, budget adherence, recurring overhead, and stability.</div>
+            <div class="divider"></div>
+            <div id="insight-health-body"></div>
+          </div>
+
+          <!-- 2. Investment Readiness -->
+          <div class="card">
+            <div class="section-label">Wealth Strategy</div>
+            <div class="section-title">Investment Readiness</div>
+            <div class="section-subtitle">Readiness score, emergency cushion analysis, and actionable steps to start or scale investing.</div>
+            <div class="divider"></div>
+            <div id="insight-invest-body"></div>
+          </div>
+        </div>
+
+        <!-- Row 2: Future Expense Forecasting -->
+        <div class="card">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Predictive Model</div>
+              <div class="section-title">Future Expense Forecasting & Budget Comparison</div>
+              <div class="section-subtitle">Predicted upcoming total and category-wise spending trajectory compared against active limits.</div>
+            </div>
+          </div>
+          <div class="divider"></div>
+          <div id="insight-forecast-body"></div>
+        </div>
+
+        <!-- Row 3: Anomaly & Pattern Detection -->
+        <div class="grid-2">
+          <!-- 4. Unusual Expense Detection -->
+          <div class="card">
+            <div class="section-label">Anomaly Detector</div>
+            <div class="section-title">Unusual Expenses & Outliers</div>
+            <div class="section-subtitle">Transactions differing significantly from your normal spending profile with contextual reasons.</div>
+            <div class="divider"></div>
+            <div id="insight-anomaly-body"></div>
+          </div>
+
+          <!-- 5. Spending Pattern Detection -->
+          <div class="card">
+            <div class="section-label">Behavioral Trends</div>
+            <div class="section-title">Spending Pattern Detection</div>
+            <div class="section-subtitle">Key trends including food concentration, weekend spending patterns, and recurring commitments.</div>
+            <div class="divider"></div>
+            <div id="insight-pattern-body"></div>
+          </div>
+        </div>
+
+      </div><!-- /section-insights -->
+
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+
+</div><!-- /app-shell -->
+
+<script src="insights.js"></script>
+<script src="script.js"></script>
+
+<!-- Cover Graph Animation -->
+<script>
+(function() {
+  const canvas = document.getElementById('cover-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  let W, H, points = [], bars = [], particles = [], animId;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+    initScene();
+  }
+
+  function initScene() {
+    // Line chart points across the bottom 55% of screen
+    points = [];
+    const numPts = 20;
+    let y = H * 0.7;
+    for (let i = 0; i <= numPts; i++) {
+      y += (Math.random() - 0.55) * H * 0.07;
+      y = Math.max(H * 0.35, Math.min(H * 0.8, y));
+      points.push({ x: (i / numPts) * W, y, targetY: y });
+    }
+
+    // Bar chart pillars along the bottom
+    bars = [];
+    const numBars = 14;
+    for (let i = 0; i < numBars; i++) {
+      const bH = H * (0.08 + Math.random() * 0.22);
+      bars.push({ x: (W / numBars) * i + W / numBars * 0.15, w: (W / numBars) * 0.55, h: 0, targetH: bH });
+    }
+
+    // Particles
+    particles = [];
+    for (let i = 0; i < 60; i++) {
+      particles.push({
+        x: Math.random() * W, y: Math.random() * H,
+        r: Math.random() * 1.5 + 0.3,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        alpha: Math.random() * 0.4 + 0.1
+      });
+    }
+  }
+
+  let tick = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    tick++;
+
+    // Gradient background radial glow
+    const glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+    glow.addColorStop(0, 'rgba(16,185,129,0.07)');
+    glow.addColorStop(1, 'rgba(5,13,26,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, W, H);
+
+
+    // Animated bars growing up
+    bars.forEach((b, i) => {
+      b.h += (b.targetH - b.h) * 0.06;
+      const alpha = 0.15 + 0.08 * Math.sin(tick * 0.025 + i);
+      const grad = ctx.createLinearGradient(b.x, H - b.h, b.x, H);
+      grad.addColorStop(0, `rgba(16,185,129,${alpha + 0.1})`);
+      grad.addColorStop(1, `rgba(6,182,212,${alpha})`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(b.x, H - b.h, b.w, b.h, 4);
+      ctx.fill();
+
+      // Bar top glow line
+      ctx.strokeStyle = `rgba(52,211,153,${alpha * 2})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(b.x, H - b.h);
+      ctx.lineTo(b.x + b.w, H - b.h);
+      ctx.stroke();
+    });
+
+    // Animate line chart points slightly
+    points.forEach(p => {
+      p.targetY += (Math.random() - 0.5) * 0.8;
+      p.targetY = Math.max(H * 0.3, Math.min(H * 0.78, p.targetY));
+      p.y += (p.targetY - p.y) * 0.04;
+    });
+
+    // Draw filled area under line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, H);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, H);
+    ctx.closePath();
+    const areaGrad = ctx.createLinearGradient(0, H * 0.3, 0, H);
+    areaGrad.addColorStop(0, 'rgba(52,211,153,0.12)');
+    areaGrad.addColorStop(1, 'rgba(52,211,153,0)');
+    ctx.fillStyle = areaGrad;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length - 1; i++) {
+      const mx = (points[i].x + points[i + 1].x) / 2;
+      const my = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, mx, my);
+    }
+    ctx.strokeStyle = 'rgba(52,211,153,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+
+    // Dots on the line
+    points.forEach((p, i) => {
+      if (i % 3 !== 0) return;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#34d399';
+      ctx.fill();
+      ctx.strokeStyle = '#050d1a';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Particles
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(52,211,153,${p.alpha})`;
+      ctx.fill();
+    });
+
+    // Stop animation once cover is hidden
+    if (!document.getElementById('cover-screen')?.classList.contains('hidden')) {
+      animId = requestAnimationFrame(draw);
+    }
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+})();
+</script>
+</body>
+</html>
