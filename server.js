@@ -15,9 +15,17 @@ app.use(bodyParser.json());
 // Serve static files from current directory
 app.use(express.static(path.join(__dirname)));
 
-const upload = multer({ dest: 'uploads/' });
+const fs = require('fs');
+const isVercel = process.env.VERCEL === '1';
 
-const db = new sqlite3.Database('./database.sqlite', (err) => {
+const uploadDir = isVercel ? '/tmp/uploads' : 'uploads/';
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+const upload = multer({ dest: uploadDir });
+
+const dbPath = isVercel ? '/tmp/database.sqlite' : './database.sqlite';
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database', err.message);
   } else {
@@ -249,6 +257,9 @@ app.post('/api/upload-receipt', upload.single('receipt'), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+if (!isVercel) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+  });
+}
+module.exports = app;
