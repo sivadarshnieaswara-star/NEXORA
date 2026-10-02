@@ -1,5 +1,9 @@
 node_modules/
 database.sqlite
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+data/
 uploads/
 .env
 .DS_Store
