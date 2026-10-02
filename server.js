@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
+const initSqlJs = require('sql.js');
 const path = require('path');
 const fs = require('fs');
 const ARIMA = require('arima');
@@ -68,51 +68,80 @@ const upload = multer({
   }
 });
 
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Error opening database', err.message);
-  } else {
-    console.log(`Connected to SQLite at ${dbPath}`);
-  }
-});
+// ── sql.js Database Layer ──────────────────────────────────────────────────
+let db;
 
-function runSql(sql, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function onRun(err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
+function saveDb() {
+  try {
+    const data = db.export();
+    const buffer = Buffer.from(data);
+    fs.writeFileSync(dbPath, buffer);
+  } catch (e) {
+    console.error('Error saving database:', e);
+  }
 }
 
-async function initDb() {
-  await runSql('PRAGMA busy_timeout = 5000');
-  await runSql('PRAGMA journal_mode = WAL');
-  await runSql(`CREATE TABLE IF NOT EXISTS expenses (
+function dbAll(sql, params = []) {
+  const stmt = db.prepare(sql);
+  if (params.length > 0) stmt.bind(params);
+  const rows = [];
+  while (stmt.step()) {
+    rows.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return rows;
+}
+
+function dbRun(sql, params = []) {
+  db.run(sql, params);
+  saveDb();
+  return { changes: db.getRowsModified() };
+}
+
+const dbReady = initSqlJs().then((SQL) => {
+  // Try to load existing database file
+  try {
+    if (fs.existsSync(dbPath)) {
+      const buffer = fs.readFileSync(dbPath);
+      db = new SQL.Database(buffer);
+      console.log(`Loaded existing SQLite database from ${dbPath}`);
+    } else {
+      db = new SQL.Database();
+      console.log('Created new in-memory SQLite database');
+    }
+  } catch (e) {
+    console.warn('Could not load existing database, creating new one:', e.message);
+    db = new SQL.Database();
+  }
+
+  // Create tables
+  db.run(`CREATE TABLE IF NOT EXISTS expenses (
     id TEXT PRIMARY KEY,
     amount REAL,
     category TEXT,
     date TEXT,
     note TEXT
   )`);
-  await runSql(`CREATE TABLE IF NOT EXISTS incomes (
+  db.run(`CREATE TABLE IF NOT EXISTS incomes (
     id TEXT PRIMARY KEY,
     amount REAL,
     category TEXT,
     date TEXT,
     note TEXT
   )`);
-  await runSql(`CREATE TABLE IF NOT EXISTS budgets (
+  db.run(`CREATE TABLE IF NOT EXISTS budgets (
     category TEXT PRIMARY KEY,
     amount REAL
   )`);
-}
 
-let dbReady = initDb().catch((err) => {
+  saveDb();
+  console.log('Database tables initialized');
+}).catch((err) => {
   console.error('Database init failed', err);
   throw err;
 });
 
+// ── Middleware to ensure DB is ready ────────────────────────────────────────
 function withDb(handler) {
   return async (req, res) => {
     try {
@@ -127,102 +156,78 @@ function withDb(handler) {
   };
 }
 
+// ── Health Check ───────────────────────────────────────────────────────────
 app.get('/health', withDb(async (req, res) => {
-  await new Promise((resolve, reject) => {
-    db.get('SELECT 1 AS ok', (err) => (err ? reject(err) : resolve()));
-  });
+  const rows = dbAll('SELECT 1 AS ok');
   res.json({ status: 'ok' });
 }));
 
-// Expenses API
+// ── Expenses API ───────────────────────────────────────────────────────────
 app.get('/api/expenses', withDb(async (req, res) => {
-  db.all('SELECT * FROM expenses', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+  const rows = dbAll('SELECT * FROM expenses');
+  res.json(rows);
 }));
 
 app.post('/api/expenses', withDb(async (req, res) => {
   const { id, amount, category, date, note } = req.body;
-  db.run(
+  dbRun(
     `INSERT INTO expenses (id, amount, category, date, note) VALUES (?, ?, ?, ?, ?)`,
-    [id, amount, category, date, note],
-    function onInsert(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ id, amount, category, date, note });
-    }
+    [id, amount, category, date, note]
   );
+  res.json({ id, amount, category, date, note });
 }));
 
 app.put('/api/expenses/:id', withDb(async (req, res) => {
   const { amount, category, date, note } = req.body;
-  db.run(
+  const result = dbRun(
     `UPDATE expenses SET amount = ?, category = ?, date = ?, note = ? WHERE id = ?`,
-    [amount, category, date, note, req.params.id],
-    function onUpdate(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ changes: this.changes });
-    }
+    [amount, category, date, note, req.params.id]
   );
+  res.json({ changes: result.changes });
 }));
 
 app.delete('/api/expenses/:id', withDb(async (req, res) => {
-  db.run(`DELETE FROM expenses WHERE id = ?`, req.params.id, function onDelete(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ changes: this.changes });
-  });
+  const result = dbRun(`DELETE FROM expenses WHERE id = ?`, [req.params.id]);
+  res.json({ changes: result.changes });
 }));
 
-// Incomes API
+// ── Incomes API ────────────────────────────────────────────────────────────
 app.get('/api/incomes', withDb(async (req, res) => {
-  db.all('SELECT * FROM incomes', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+  const rows = dbAll('SELECT * FROM incomes');
+  res.json(rows);
 }));
 
 app.post('/api/incomes', withDb(async (req, res) => {
   const { id, amount, category, date, note } = req.body;
-  db.run(
+  dbRun(
     `INSERT INTO incomes (id, amount, category, date, note) VALUES (?, ?, ?, ?, ?)`,
-    [id, amount, category, date, note],
-    function onInsert(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ id, amount, category, date, note });
-    }
+    [id, amount, category, date, note]
   );
+  res.json({ id, amount, category, date, note });
 }));
 
 app.put('/api/incomes/:id', withDb(async (req, res) => {
   const { amount, category, date, note } = req.body;
-  db.run(
+  const result = dbRun(
     `UPDATE incomes SET amount = ?, category = ?, date = ?, note = ? WHERE id = ?`,
-    [amount, category, date, note, req.params.id],
-    function onUpdate(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ changes: this.changes });
-    }
+    [amount, category, date, note, req.params.id]
   );
+  res.json({ changes: result.changes });
 }));
 
 app.delete('/api/incomes/:id', withDb(async (req, res) => {
-  db.run(`DELETE FROM incomes WHERE id = ?`, req.params.id, function onDelete(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ changes: this.changes });
-  });
+  const result = dbRun(`DELETE FROM incomes WHERE id = ?`, [req.params.id]);
+  res.json({ changes: result.changes });
 }));
 
-// Budgets API
+// ── Budgets API ────────────────────────────────────────────────────────────
 app.get('/api/budgets', withDb(async (req, res) => {
-  db.all('SELECT * FROM budgets', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-
-    const defaultBudgets = { Food: 0, Transport: 0, Housing: 0, Entertainment: 0, Other: 0 };
-    rows.forEach((row) => {
-      defaultBudgets[row.category] = row.amount;
-    });
-    res.json(defaultBudgets);
+  const rows = dbAll('SELECT * FROM budgets');
+  const defaultBudgets = { Food: 0, Transport: 0, Housing: 0, Entertainment: 0, Other: 0 };
+  rows.forEach((row) => {
+    defaultBudgets[row.category] = row.amount;
   });
+  res.json(defaultBudgets);
 }));
 
 app.put('/api/budgets', withDb(async (req, res) => {
@@ -231,68 +236,54 @@ app.put('/api/budgets', withDb(async (req, res) => {
 
   if (categories.length === 0) return res.json({ success: true });
 
-  let completed = 0;
-  let failed = false;
-
   categories.forEach((category) => {
     const amount = budgets[category];
-    db.run(
+    dbRun(
       `INSERT INTO budgets (category, amount) VALUES (?, ?)
               ON CONFLICT(category) DO UPDATE SET amount = ?`,
-      [category, amount, amount],
-      (err) => {
-        if (err && !failed) {
-          failed = true;
-          return res.status(500).json({ error: err.message });
-        }
-        completed++;
-        if (!failed && completed === categories.length) {
-          res.json({ success: true });
-        }
-      }
+      [category, amount, amount]
     );
   });
+  res.json({ success: true });
 }));
 
-// ARIMA Forecasting API
+// ── ARIMA Forecasting API ──────────────────────────────────────────────────
 app.get('/api/forecast', withDb(async (req, res) => {
-  db.all('SELECT date, amount FROM expenses ORDER BY date ASC', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  const rows = dbAll('SELECT date, amount FROM expenses ORDER BY date ASC');
 
-    if (rows.length < 5) {
-      return res.status(400).json({ error: 'Not enough data for forecasting. Need at least 5 records.' });
-    }
+  if (rows.length < 5) {
+    return res.status(400).json({ error: 'Not enough data for forecasting. Need at least 5 records.' });
+  }
 
-    const dailyTotals = {};
-    rows.forEach((r) => {
-      dailyTotals[r.date] = (dailyTotals[r.date] || 0) + r.amount;
-    });
-
-    const sortedDates = Object.keys(dailyTotals).sort();
-    const tsData = sortedDates.map((date) => dailyTotals[date]);
-
-    try {
-      const arima = new ARIMA({
-        p: 1,
-        d: 1,
-        q: 1,
-        verbose: false
-      }).train(tsData);
-
-      const [pred] = arima.predict(7);
-
-      res.json({
-        historical_days: tsData.length,
-        forecast: pred,
-        message: 'Predicted expenses for the next 7 days.'
-      });
-    } catch (modelErr) {
-      res.status(500).json({ error: 'ARIMA model failed to train.', details: modelErr.message });
-    }
+  const dailyTotals = {};
+  rows.forEach((r) => {
+    dailyTotals[r.date] = (dailyTotals[r.date] || 0) + r.amount;
   });
+
+  const sortedDates = Object.keys(dailyTotals).sort();
+  const tsData = sortedDates.map((date) => dailyTotals[date]);
+
+  try {
+    const arima = new ARIMA({
+      p: 1,
+      d: 1,
+      q: 1,
+      verbose: false
+    }).train(tsData);
+
+    const [pred] = arima.predict(7);
+
+    res.json({
+      historical_days: tsData.length,
+      forecast: pred,
+      message: 'Predicted expenses for the next 7 days.'
+    });
+  } catch (modelErr) {
+    res.status(500).json({ error: 'ARIMA model failed to train.', details: modelErr.message });
+  }
 }));
 
-// Receipt OCR Upload
+// ── Receipt OCR Upload ─────────────────────────────────────────────────────
 app.post('/api/upload-receipt', upload.single('receipt'), withDb(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded.' });
@@ -340,12 +331,14 @@ app.post('/api/upload-receipt', upload.single('receipt'), withDb(async (req, res
   }
 }));
 
+// ── Error Handler ──────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   if (!err) return next();
   const status = err instanceof multer.MulterError ? 400 : (err.status || 400);
   res.status(status).json({ error: err.message || 'Request failed' });
 });
 
+// ── Start Server (non-Vercel) ──────────────────────────────────────────────
 function startServer() {
   const server = app.listen(PORT, HOST, () => {
     console.log(`Server is running on http://${HOST}:${PORT}`);
@@ -353,9 +346,7 @@ function startServer() {
 
   const shutdown = (signal) => {
     console.log(`Received ${signal}, shutting down`);
-    server.close(() => {
-      db.close(() => process.exit(0));
-    });
+    server.close(() => process.exit(0));
     setTimeout(() => process.exit(1), 10000).unref();
   };
 

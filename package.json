@@ -5,13 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "build": "node -e \"require('sqlite3'); console.log('sqlite3 ok')\"",
-    "vercel-build": "npm rebuild sqlite3 && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "allowScripts": {
-    "sqlite3": true,
-    "tesseract.js": true
   },
   "keywords": [],
   "author": "",
@@ -27,7 +21,7 @@
     "express": "^5.2.1",
     "http-server": "^14.1.1",
     "multer": "^2.4.0",
-    "sqlite3": "^6.0.1",
+    "sql.js": "^1.11.0",
     "tesseract.js": "^7.0.0"
   }
 }
