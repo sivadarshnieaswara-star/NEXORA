@@ -227,6 +227,19 @@
                 <input type="text" id="note" placeholder="What was this for?">
               </div>
 
+              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                <input type="checkbox" id="expense-recurring" style="width: auto;">
+                <label for="expense-recurring" style="margin: 0; font-weight: 500;">Make this recurring</label>
+              </div>
+
+              <div class="form-group" id="expense-frequency-group" style="display: none;">
+                <label class="form-label" for="expense-frequency">Frequency</label>
+                <select id="expense-frequency">
+                  <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+
               <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2);">
                 <button type="submit" class="btn btn-primary btn-full" id="submit-btn">Add Expense</button>
                 <button type="button" class="btn btn-ghost btn-full" id="cancel-btn" style="display:none;">Cancel</button>
@@ -314,6 +327,19 @@
                 <input type="text" id="income-note" placeholder="Describe this income">
               </div>
 
+              <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem;">
+                <input type="checkbox" id="income-recurring" style="width: auto;">
+                <label for="income-recurring" style="margin: 0; font-weight: 500;">Make this recurring</label>
+              </div>
+
+              <div class="form-group" id="income-frequency-group" style="display: none;">
+                <label class="form-label" for="income-frequency">Frequency</label>
+                <select id="income-frequency">
+                  <option value="monthly">Monthly</option>
+                  <option value="weekly">Weekly</option>
+                </select>
+              </div>
+
               <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-2);">
                 <button type="submit" class="btn btn-primary btn-full" id="income-submit-btn">Add Income</button>
                 <button type="button" class="btn btn-ghost btn-full" id="income-cancel-btn" style="display:none;">Cancel</button>
@@ -385,6 +411,39 @@
             <div class="empty-state-sub">Track your income using the form.</div>
           </div>
         </div>
+
+        <!-- Recurring Rules Table -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="section-header">
+            <div>
+              <div class="section-label">Automation</div>
+              <div class="section-title">Active Subscriptions & Recurring Rules</div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Category/Source</th>
+                  <th>Note</th>
+                  <th>Amount</th>
+                  <th>Frequency</th>
+                  <th>Next Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="recurring-list">
+              </tbody>
+            </table>
+          </div>
+          <div id="recurring-empty" class="empty-state" style="display:none;">
+            <div class="empty-state-icon">🔄</div>
+            <div class="empty-state-title">No recurring rules</div>
+            <div class="empty-state-sub">Check "Make this recurring" when adding an expense or income.</div>
+          </div>
+        </div>
+
       </div><!-- /section-income -->
 
 

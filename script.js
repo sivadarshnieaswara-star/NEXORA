@@ -82,6 +82,59 @@ let budgets  = {
   Food: 0, Transport: 0, Housing: 0, Entertainment: 0, Other: 0
 };
 
+let recurringRules = JSON.parse(localStorage.getItem('recurringRules')) || [];
+
+function saveRecurringRules() {
+  localStorage.setItem('recurringRules', JSON.stringify(recurringRules));
+}
+
+async function processRecurringRules() {
+  let changed = false;
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  const posts = [];
+
+  for (let rule of recurringRules) {
+    let nextD = new Date(rule.nextDate);
+    nextD.setHours(0,0,0,0);
+    
+    while (nextD <= now) {
+      const newId = Date.now().toString() + Math.floor(Math.random()*1000);
+      const entry = {
+        id: newId,
+        amount: rule.amount,
+        category: rule.category,
+        date: nextD.toISOString().split('T')[0],
+        note: rule.note,
+        isRecurring: true
+      };
+
+      if (rule.type === 'expense') {
+        expenses.push(entry);
+        posts.push(fetch('/api/expenses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) }));
+      } else {
+        incomes.push(entry);
+        posts.push(fetch('/api/incomes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(entry) }));
+      }
+
+      if (rule.frequency === 'weekly') {
+        nextD.setDate(nextD.getDate() + 7);
+      } else {
+        nextD.setMonth(nextD.getMonth() + 1);
+      }
+      changed = true;
+    }
+    rule.nextDate = nextD.toISOString().split('T')[0];
+  }
+
+  if (changed) {
+    saveRecurringRules();
+    await Promise.all(posts);
+    saveExpenses();
+    saveIncomes();
+  }
+}
+
 // Expose globally for Insights engine
 window.expenses = expenses;
 window.incomes  = incomes;
@@ -102,6 +155,9 @@ async function loadData() {
     window.incomes = incomes;
     window.budgets = budgets;
     
+    await processRecurringRules();
+    renderRecurringRules();
+
     refreshAllCharts();
     if (document.getElementById('section-expenses').classList.contains('active')) renderExpenses();
     if (document.getElementById('section-income').classList.contains('active')) renderIncomes();
@@ -727,7 +783,17 @@ const expenseIdInput   = document.getElementById('expense-id');
 const submitBtn        = document.getElementById('submit-btn');
 const cancelBtn        = document.getElementById('cancel-btn');
 const expenseFormTitle = document.getElementById('expense-form-title');
-const quickEntryInput = document.getElementById('quick-entry');
+const quickEntryInput  = document.getElementById('quick-entry');
+
+const expenseRecurringCb = document.getElementById('expense-recurring');
+const expenseFrequencyGroup = document.getElementById('expense-frequency-group');
+const expenseFrequencySelect = document.getElementById('expense-frequency');
+
+if (expenseRecurringCb) {
+  expenseRecurringCb.addEventListener('change', e => {
+    expenseFrequencyGroup.style.display = e.target.checked ? 'flex' : 'none';
+  });
+}
 
 // Simple keyword-to-category map for quick entry parsing
 const QUICK_CATEGORY_MAP = {
@@ -869,6 +935,24 @@ expenseForm.addEventListener('submit', async e => {
     }
     const newId = Date.now().toString();
     const newExpense = { id: newId, amount, category, date, note };
+
+    if (expenseRecurringCb && expenseRecurringCb.checked) {
+      newExpense.isRecurring = true;
+      const freq = expenseFrequencySelect.value;
+      const nd = new Date(date);
+      if (freq === 'weekly') nd.setDate(nd.getDate() + 7);
+      else nd.setMonth(nd.getMonth() + 1);
+      recurringRules.push({
+        id: 'rule-' + Date.now(),
+        type: 'expense',
+        amount, category, note,
+        frequency: freq,
+        nextDate: nd.toISOString().split('T')[0]
+      });
+      saveRecurringRules();
+      renderRecurringRules();
+    }
+
     expenses.push(newExpense);
     await fetch('/api/expenses', {
       method: 'POST',
@@ -912,6 +996,10 @@ function resetExpenseForm() {
   expenseFormTitle.textContent = 'Add Expense';
   document.getElementById('amount-error').classList.remove('visible');
   amountInput.classList.remove('error');
+  if (expenseRecurringCb) {
+    expenseRecurringCb.checked = false;
+    expenseFrequencyGroup.style.display = 'none';
+  }
 }
 
 // ── Expense List ───────────────────────────────────────────────────────────
@@ -932,7 +1020,9 @@ function renderExpenses() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${exp.date}</td>
-      <td><span class="badge badge-neutral">${exp.category}</span></td>
+      <td><span class="badge badge-neutral">${exp.category}</span>
+          ${exp.isRecurring ? '<span class="recurring-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg> Recurring</span>' : ''}
+      </td>
       <td style="color:var(--text-secondary)">${exp.note || '—'}</td>
       <td style="font-weight:700;color:var(--danger)">${fmt(exp.amount)}</td>
       <td>
@@ -991,6 +1081,16 @@ const incomeSubmitBtn      = document.getElementById('income-submit-btn');
 const incomeCancelBtn      = document.getElementById('income-cancel-btn');
 const incomeFormTitle      = document.getElementById('income-form-title');
 
+const incomeRecurringCb = document.getElementById('income-recurring');
+const incomeFrequencyGroup = document.getElementById('income-frequency-group');
+const incomeFrequencySelect = document.getElementById('income-frequency');
+
+if (incomeRecurringCb) {
+  incomeRecurringCb.addEventListener('change', e => {
+    incomeFrequencyGroup.style.display = e.target.checked ? 'flex' : 'none';
+  });
+}
+
 incomeForm.addEventListener('submit', async e => {
   e.preventDefault();
   if (!validateIncomeForm()) return;
@@ -1013,6 +1113,24 @@ incomeForm.addEventListener('submit', async e => {
   } else {
     const newId = Date.now().toString();
     const newIncome = { id: newId, amount, category, date, note };
+
+    if (incomeRecurringCb && incomeRecurringCb.checked) {
+      newIncome.isRecurring = true;
+      const freq = incomeFrequencySelect.value;
+      const nd = new Date(date);
+      if (freq === 'weekly') nd.setDate(nd.getDate() + 7);
+      else nd.setMonth(nd.getMonth() + 1);
+      recurringRules.push({
+        id: 'rule-' + Date.now(),
+        type: 'income',
+        amount, category, note,
+        frequency: freq,
+        nextDate: nd.toISOString().split('T')[0]
+      });
+      saveRecurringRules();
+      renderRecurringRules();
+    }
+
     incomes.push(newIncome);
     await fetch('/api/incomes', {
       method: 'POST',
@@ -1054,6 +1172,10 @@ function resetIncomeForm() {
   incomeFormTitle.textContent = 'Add Income';
   document.getElementById('income-amount-error').classList.remove('visible');
   incomeAmountInput.classList.remove('error');
+  if (incomeRecurringCb) {
+    incomeRecurringCb.checked = false;
+    incomeFrequencyGroup.style.display = 'none';
+  }
 }
 
 // ── Income List ────────────────────────────────────────────────────────────
@@ -1074,7 +1196,9 @@ function renderIncomes() {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${inc.date}</td>
-      <td><span class="badge badge-success">${inc.category}</span></td>
+      <td><span class="badge badge-success">${inc.category}</span>
+          ${inc.isRecurring ? '<span class="recurring-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21v-5h5"/></svg> Recurring</span>' : ''}
+      </td>
       <td style="color:var(--text-secondary)">${inc.note || '—'}</td>
       <td style="font-weight:700;color:var(--success)">+${fmt(inc.amount)}</td>
       <td>
@@ -1225,3 +1349,50 @@ if (coverScreen) {
     }
   });
 }
+
+// ── Recurring Rules Management ───────────────────────────────────────────────
+function renderRecurringRules() {
+  const tbody = document.getElementById('recurring-list');
+  const empty = document.getElementById('recurring-empty');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  if (recurringRules.length === 0) {
+    if (empty) empty.style.display = 'flex';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  recurringRules.forEach(rule => {
+    const tr = document.createElement('tr');
+    const badgeCls = rule.type === 'expense' ? 'badge-danger' : 'badge-success';
+    const amountStr = rule.type === 'expense' ? fmt(rule.amount) : `+${fmt(rule.amount)}`;
+    tr.innerHTML = `
+      <td><span class="badge ${badgeCls}" style="text-transform: capitalize;">${rule.type}</span></td>
+      <td><span class="badge badge-neutral">${rule.category}</span></td>
+      <td style="color:var(--text-secondary)">${rule.note || '—'}</td>
+      <td style="font-weight:700;color:var(--${rule.type === 'expense' ? 'danger' : 'success'})">${amountStr}</td>
+      <td style="text-transform: capitalize;">${rule.frequency}</td>
+      <td>${rule.nextDate}</td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="deleteRecurringRule('${rule.id}')">Cancel</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+window.deleteRecurringRule = async function(id) {
+  const ok = await Modal.confirm({
+    title: 'Cancel Recurring Rule',
+    body: 'Are you sure you want to cancel this recurring rule? Past auto-generated entries will not be deleted.',
+    confirmText: 'Cancel Rule',
+    type: 'danger'
+  });
+  if (!ok) return;
+
+  recurringRules = recurringRules.filter(r => r.id !== id);
+  saveRecurringRules();
+  renderRecurringRules();
+  Toast.show('Recurring rule cancelled.', 'info');
+};
