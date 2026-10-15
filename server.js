@@ -50,7 +50,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(__dirname, {
+app.use(express.static(path.join(__dirname, 'public'), {
   index: 'index.html',
   dotfiles: 'ignore',
   extensions: ['html']
@@ -98,7 +98,10 @@ function dbRun(sql, params = []) {
   return { changes: db.getRowsModified() };
 }
 
-const dbReady = initSqlJs().then((SQL) => {
+// Resolve the wasm explicitly so Vercel's file tracer bundles it with the function
+const sqlWasmPath = require.resolve('sql.js/dist/sql-wasm.wasm');
+
+const dbReady = initSqlJs({ locateFile: () => sqlWasmPath }).then((SQL) => {
   // Try to load existing database file
   try {
     if (fs.existsSync(dbPath)) {
@@ -293,7 +296,8 @@ app.post('/api/upload-receipt', upload.single('receipt'), withDb(async (req, res
     const { data: { text } } = await Tesseract.recognize(
       req.file.path,
       'eng',
-      { logger: (m) => console.log(m) }
+      // Vercel's filesystem is read-only outside /tmp, so cache language data there
+      { logger: (m) => console.log(m), ...(isVercel ? { cachePath: '/tmp' } : {}) }
     );
 
     const amountMatch = text.match(/(?:\$|Rs\.?|₹)?\s*(\d+(?:[.,]\d{2})?)/);
